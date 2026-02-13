@@ -86,8 +86,11 @@ class Scanner {
 //> slash
       case '/':
         if (match('/')) {
-          // A comment goes until the end of the line.
+          // A line comment goes until the end of the line.
           while (peek() != '\n' && !isAtEnd()) advance();
+        } else if (match('*')) {
+          // A block comment goes until the matching */ (optionally nested).
+          blockComment();
         } else {
           addToken(SLASH);
         }
@@ -238,4 +241,40 @@ class Scanner {
     tokens.add(new Token(type, text, literal, line));
   }
 //< advance-and-add-token
+  private void blockComment() {
+    int depth = 1; // we already consumed the initial /*
+
+    while (depth > 0) {
+      if (isAtEnd()) {
+        Lox.error(line, "Unterminated block comment.");
+        return;
+      }
+
+      // Track newlines for correct line numbers.
+      if (peek() == '\n') {
+        line++;
+        advance();
+        continue;
+      }
+
+      // Detect nested opener /* (nesting support)
+      if (peek() == '/' && peekNext() == '*') {
+        advance(); // consume '/'
+        advance(); // consume '*'
+        depth++;
+        continue;
+      }
+
+      // Detect closer */
+      if (peek() == '*' && peekNext() == '/') {
+        advance(); // consume '*'
+        advance(); // consume '/'
+        depth--;
+        continue;
+      }
+
+      // Otherwise, consume a character inside the comment.
+      advance();
+    }
+  }
 }
