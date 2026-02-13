@@ -1,0 +1,10 @@
+/* line1
+line2
+line3 */
+print 123;
+
+/* outer
+   /* inner */
+   still outer
+*/
+print "ok";
