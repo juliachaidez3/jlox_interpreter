@@ -9,6 +9,8 @@ import java.nio.file.Paths;
 import java.util.List;
 
 class Lox {
+    private static final Interpreter interpreter = new Interpreter();
+    static boolean hadRuntimeError = false;
     static boolean hadError = false;
 
     public static void main(String[] args) throws IOException {
@@ -28,6 +30,8 @@ class Lox {
 
         // Indicate an error in the exit code.
         if (hadError) System.exit(65);
+        if (hadRuntimeError) System.exit(70);
+
     }
 
     private static void runPrompt() throws IOException {
@@ -55,8 +59,7 @@ class Lox {
         // Stop if there was a syntax error.
         if (hadError) return;
 
-        // For now, just print the AST.
-        System.out.println(new AstPrinter().print(expression));
+        interpreter.interpret(expression);
     }
 
     static void error(int line, String message) {
@@ -74,5 +77,11 @@ class Lox {
     private static void report(int line, String where, String message) {
         System.err.println("[line " + line + "] Error" + where + ": " + message);
         hadError = true;
+    }
+
+    static void runtimeError(RuntimeError error) {
+        System.err.println(error.getMessage() +
+                "\n[line " + error.token.line + "]");
+        hadRuntimeError = true;
     }
 }
