@@ -29,12 +29,26 @@ class Parser {
     }
 
     private Expr comma() {
-        Expr expr = equality();
+        Expr expr = ternary();
 
         while (match(COMMA)) {
             Token operator = previous();
-            Expr right = equality();
+            Expr right = ternary();
             expr = new Expr.Binary(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    // ternary → equality ( "?" expression ":" ternary )? ;
+    private Expr ternary() {
+        Expr expr = equality();
+
+        if (match(QUESTION)) {
+            Expr thenBranch = expression(); // allows comma inside the middle, like C
+            consume(COLON, "Expect ':' after then branch of conditional expression.");
+            Expr elseBranch = ternary();    // right-associative
+            expr = new Expr.Ternary(expr, thenBranch, elseBranch);
         }
 
         return expr;
