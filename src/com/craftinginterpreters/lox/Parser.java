@@ -133,10 +133,58 @@ class Parser {
             return new Expr.Grouping(expr);
         }
 
+        // Error productions: binary operator with no left operand
+        if (match(COMMA,
+                EQUAL_EQUAL, BANG_EQUAL,
+                GREATER, GREATER_EQUAL, LESS, LESS_EQUAL,
+                PLUS,
+                STAR, SLASH)) {
+            Token operator = previous();
+            // Parse and discard RHS (we return it as the recovered expression)
+            return recoverMissingLeftOperand(operator);
+        }
+
+
         throw error(peek(), "Expect expression.");
     }
 
-    // ----- Error handling + token utilities (from the chapter) -----
+    private Expr recoverMissingLeftOperand(Token operator) {
+        // Report but DO NOT throw; we want to keep parsing.
+        Lox.error(operator, "Missing left-hand operand.");
+
+        // Parse and discard a RHS at the correct precedence level
+        // The same kind of operand that operator expects on its right
+        switch (operator.type) {
+            // Lowest precedence
+            case COMMA:
+                return ternary();
+
+            // Equality operators take comparison operands.
+            case EQUAL_EQUAL:
+            case BANG_EQUAL:
+                return comparison();
+
+            // Comparison operators take term operands.
+            case GREATER:
+            case GREATER_EQUAL:
+            case LESS:
+            case LESS_EQUAL:
+                return term();
+
+            // + takes factor operands.
+            case PLUS:
+                return factor();
+
+            // * and / take unary operands.
+            case STAR:
+            case SLASH:
+                return unary();
+
+            default:
+                // Fallback: parse *something* so we don't loop forever.
+                return unary();
+        }
+    }
 
     private Token consume(TokenType type, String message) {
         if (check(type)) return advance();
