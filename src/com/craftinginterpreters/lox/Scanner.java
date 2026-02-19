@@ -69,6 +69,8 @@ class Scanner {
       case '+': addToken(PLUS); break;
       case ';': addToken(SEMICOLON); break;
       case '*': addToken(STAR); break; // [slash]
+      case '?': addToken(TokenType.QUESTION); break;
+      case ':': addToken(TokenType.COLON); break;
 //> two-char-tokens
       case '!':
         addToken(match('=') ? BANG_EQUAL : BANG);
