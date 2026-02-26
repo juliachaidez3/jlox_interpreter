@@ -24,6 +24,14 @@ class Parser {
         return statements;
     }
 
+    Expr parseExpression() {
+        try {
+            return expression();
+        } catch (ParseError error) {
+            return null;
+        }
+    }
+
     // declaration → varDecl | statement ;
     private Stmt declaration() {
         try {
