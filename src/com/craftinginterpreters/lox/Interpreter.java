@@ -16,6 +16,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
     }
 
+    void interpretExpression(Expr expr) {
+        try {
+            Object value = evaluate(expr);
+            System.out.println(stringify(value));
+        } catch (RuntimeError error) {
+            Lox.runtimeError(error);
+        }
+    }
+
     private void execute(Stmt stmt) {
         if (stmt == null) return; // in case of parse error recovery returning null
         stmt.accept(this);
@@ -56,12 +65,12 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(Stmt.Var stmt) {
-        Object value = null;
         if (stmt.initializer != null) {
-            value = evaluate(stmt.initializer);
+            Object value = evaluate(stmt.initializer);
+            environment.define(stmt.name.lexeme, value);
+        } else {
+            environment.defineUninitialized(stmt.name.lexeme);
         }
-
-        environment.define(stmt.name.lexeme, value);
         return null;
     }
 
