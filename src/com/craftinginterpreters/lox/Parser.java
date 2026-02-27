@@ -56,8 +56,10 @@ class Parser {
         return new Stmt.Var(name, initializer);
     }
 
-    // statement → exprStmt | printStmt | block ;
     private Stmt statement() {
+        if (match(FOR)) return forStatement();
+        if (match(IF)) return ifStatement();
+        if (match(WHILE)) return whileStatement();
         if (match(PRINT)) return printStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
         return expressionStatement();
@@ -77,6 +79,78 @@ class Parser {
         return new Stmt.Expression(expr);
     }
 
+    private Stmt ifStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'if'.");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect ')' after if condition.");
+
+        Stmt thenBranch = statement();
+        Stmt elseBranch = null;
+        if (match(ELSE)) {
+            elseBranch = statement();
+        }
+
+        return new Stmt.If(condition, thenBranch, elseBranch);
+    }
+
+    private Stmt whileStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'while'.");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect ')' after condition.");
+        Stmt body = statement();
+
+        return new Stmt.While(condition, body);
+    }
+
+    private Stmt forStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+        // 1) initializer
+        Stmt initializer;
+        if (match(SEMICOLON)) {
+            initializer = null;
+        } else if (match(VAR)) {
+            initializer = varDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        // 2) condition
+        Expr condition = null;
+        if (!check(SEMICOLON)) {
+            condition = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after loop condition.");
+
+        // 3) increment
+        Expr increment = null;
+        if (!check(RIGHT_PAREN)) {
+            increment = expression();
+        }
+        consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        Stmt body = statement();
+
+        // Desugar increment: body = { body; increment; }
+        if (increment != null) {
+            body = new Stmt.Block(java.util.Arrays.asList(
+                    body,
+                    new Stmt.Expression(increment)
+            ));
+        }
+
+        // Desugar condition: while (condition) body;
+        if (condition == null) condition = new Expr.Literal(true);
+        body = new Stmt.While(condition, body);
+
+        // Desugar initializer: { initializer; while (...) ... }
+        if (initializer != null) {
+            body = new Stmt.Block(java.util.Arrays.asList(initializer, body));
+        }
+
+        return body;
+    }
+
     // block → "{" declaration* "}" ;
     private List<Stmt> block() {
         List<Stmt> statements = new ArrayList<>();
@@ -89,16 +163,27 @@ class Parser {
         return statements;
     }
 
-    // expression → assignment ;
+    // expression → comma ;
     private Expr expression() {
-        return assignment();
+        return comma();
     }
 
-    // assignment → IDENTIFIER "=" assignment | comma ;
-    //
-    // NOTE: since you have comma/ternary, we keep them "below" assignment.
+    // comma → assignment ( "," assignment )* ;
+    private Expr comma() {
+        Expr expr = assignment();
+
+        while (match(COMMA)) {
+            Token operator = previous();
+            Expr right = assignment();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    // assignment → IDENTIFIER "=" assignment | ternary ;
     private Expr assignment() {
-        Expr expr = comma();
+        Expr expr = ternary();
 
         if (match(EQUAL)) {
             Token equals = previous();
@@ -109,34 +194,47 @@ class Parser {
                 return new Expr.Assign(name, value);
             }
 
-            // Report error but don't throw (same behavior as the book here).
             error(equals, "Invalid assignment target.");
         }
 
         return expr;
     }
 
-    private Expr comma() {
-        Expr expr = ternary();
+    // ternary → or ( "?" expression ":" ternary )? ;
+    private Expr ternary() {
+        Expr expr = or();
 
-        while (match(COMMA)) {
-            Token operator = previous();
-            Expr right = ternary();
-            expr = new Expr.Binary(expr, operator, right);
+        if (match(QUESTION)) {
+            Expr thenBranch = expression(); // allows comma inside the middle
+            consume(COLON, "Expect ':' after then branch of conditional expression.");
+            Expr elseBranch = ternary();    // right-associative
+            expr = new Expr.Ternary(expr, thenBranch, elseBranch);
         }
 
         return expr;
     }
 
-    // ternary → equality ( "?" expression ":" ternary )? ;
-    private Expr ternary() {
+    // logic_or → logic_and ( "or" logic_and )* ;
+    private Expr or() {
+        Expr expr = and();
+
+        while (match(OR)) {
+            Token operator = previous();
+            Expr right = and();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    // logic_and → equality ( "and" equality )* ;
+    private Expr and() {
         Expr expr = equality();
 
-        if (match(QUESTION)) {
-            Expr thenBranch = expression(); // allows comma inside the middle, like C
-            consume(COLON, "Expect ':' after then branch of conditional expression.");
-            Expr elseBranch = ternary();    // right-associative
-            expr = new Expr.Ternary(expr, thenBranch, elseBranch);
+        while (match(AND)) {
+            Token operator = previous();
+            Expr right = equality();
+            expr = new Expr.Logical(expr, operator, right);
         }
 
         return expr;
@@ -248,7 +346,7 @@ class Parser {
         switch (operator.type) {
             // Lowest precedence
             case COMMA:
-                return ternary();
+                return assignment();
 
             // Equality operators take comparison operands.
             case EQUAL_EQUAL:
