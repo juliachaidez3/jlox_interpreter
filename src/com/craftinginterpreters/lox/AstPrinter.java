@@ -33,8 +33,8 @@ class AstPrinter implements Expr.Visitor<String> {
     }
 
     @Override
-    public String visitTernaryExpr(Expr.Ternary expr) {
-        return parenthesize("?:", expr.condition, expr.thenBranch, expr.elseBranch);
+    public String visitCallExpr(Expr.Call expr) {
+        return parenthesize("call", expr.callee);
     }
 
     @Override
