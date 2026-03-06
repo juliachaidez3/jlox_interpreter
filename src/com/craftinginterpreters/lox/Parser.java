@@ -35,7 +35,11 @@ class Parser {
 
     private Stmt declaration() {
         try {
-            if (match(TokenType.FUN)) return function("function");
+            if (check(TokenType.FUN) && checkNext(TokenType.IDENTIFIER)) {
+                advance(); // consume FUN
+                return function("function");
+            }
+
             if (match(TokenType.VAR)) return varDeclaration();
 
             return statement();
@@ -43,6 +47,13 @@ class Parser {
             synchronize();
             return null;
         }
+    }
+
+    private boolean checkNext(TokenType type) {
+        if (isAtEnd()) return false;
+        if (tokens.get(current).type != TokenType.FUN) return false;
+        if (current + 1 >= tokens.size()) return false;
+        return tokens.get(current + 1).type == type;
     }
 
     private Stmt function(String kind) {
@@ -373,6 +384,8 @@ class Parser {
 
     private Expr primary() {
 
+        if (match(TokenType.FUN)) return functionExpression();
+
         if (match(TokenType.FALSE)) return new Expr.Literal(false);
         if (match(TokenType.TRUE)) return new Expr.Literal(true);
         if (match(TokenType.NIL)) return new Expr.Literal(null);
@@ -393,6 +406,26 @@ class Parser {
         }
 
         throw error(peek(), "Expect expression.");
+    }
+
+    private Expr functionExpression() {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'fun'.");
+
+        List<Token> parameters = new ArrayList<>();
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (parameters.size() >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+            } while (match(TokenType.COMMA));
+        }
+
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.");
+        consume(TokenType.LEFT_BRACE, "Expect '{' before function body.");
+        List<Stmt> body = block();
+
+        return new Expr.Function(parameters, body);
     }
 
     private boolean match(TokenType... types) {
