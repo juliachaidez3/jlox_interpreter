@@ -2,11 +2,14 @@ package com.craftinginterpreters.lox;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 class Environment {
     final Environment enclosing;
     private final Map<String, Object> values = new HashMap<>();
     private static final Object UNINITIALIZED = new Object();
+    private final List<Object> slots = new ArrayList<>();
 
     Environment() {
         enclosing = null;
@@ -18,8 +21,8 @@ class Environment {
 
     void define(String name, Object value) {
         values.put(name, value);
+        slots.add(value);
     }
-
     void defineUninitialized(String name) {
         values.put(name, UNINITIALIZED);
     }
@@ -51,6 +54,14 @@ class Environment {
         }
 
         throw new RuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
+    }
+
+    Object getAt(int distance, int index) {
+        return ancestor(distance).slots.get(index);
+    }
+
+    void assignAt(int distance, int index, Object value) {
+        ancestor(distance).slots.set(index, value);
     }
 
     Environment ancestor(int distance) {

@@ -9,7 +9,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     final Environment globals = new Environment();
     private Environment environment = globals;
-    private final Map<Expr, Integer> locals = new HashMap<>();
+    private final Map<Expr, Local> locals = new HashMap<>();
 
     Interpreter() {
         globals.define("clock", new LoxCallable() {
@@ -50,8 +50,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         stmt.accept(this);
     }
 
-    void resolve(Expr expr, int depth) {
-        locals.put(expr, depth);
+    void resolve(Expr expr, int depth, int index) {
+        locals.put(expr, new Local(depth, index));
     }
 
     void executeBlock(List<Stmt> statements, Environment environment) {
@@ -240,12 +240,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitAssignExpr(Expr.Assign expr) {
-
         Object value = evaluate(expr.value);
 
-        Integer distance = locals.get(expr);
-        if (distance != null) {
-            environment.assignAt(distance, expr.name, value);
+        Local local = locals.get(expr);
+        if (local != null) {
+            environment.assignAt(local.depth, local.index, value);
         } else {
             globals.assign(expr.name, value);
         }
@@ -331,10 +330,20 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         throw new RuntimeError(operator, "Operands must be numbers.");
     }
 
+    private static class Local {
+        final int depth;
+        final int index;
+
+        Local(int depth, int index) {
+            this.depth = depth;
+            this.index = index;
+        }
+    }
+
     private Object lookUpVariable(Token name, Expr expr) {
-        Integer distance = locals.get(expr);
-        if (distance != null) {
-            return environment.getAt(distance, name.lexeme);
+        Local local = locals.get(expr);
+        if (local != null) {
+            return environment.getAt(local.depth, local.index);
         } else {
             return globals.get(name);
         }

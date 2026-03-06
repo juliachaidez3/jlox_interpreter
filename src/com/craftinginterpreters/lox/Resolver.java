@@ -20,6 +20,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         this.interpreter = interpreter;
     }
 
+    // IMPORTANT: needed for blocks and function bodies
     void resolve(List<Stmt> statements) {
         for (Stmt statement : statements) {
             resolve(statement);
@@ -81,10 +82,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (currentFunction == FunctionType.NONE) {
             Lox.error(stmt.keyword, "Can't return from top-level code.");
         }
-
-        if (stmt.value != null) {
-            resolve(stmt.value);
-        }
+        if (stmt.value != null) resolve(stmt.value);
         return null;
     }
 
@@ -116,9 +114,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitCallExpr(Expr.Call expr) {
         resolve(expr.callee);
-        for (Expr argument : expr.arguments) {
-            resolve(argument);
-        }
+        for (Expr argument : expr.arguments) resolve(argument);
         return null;
     }
 
@@ -165,11 +161,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private static class Variable {
         final Token name;
+        final int index;
         boolean defined = false;
         boolean used = false;
 
-        Variable(Token name) {
+        Variable(Token name, int index) {
             this.name = name;
+            this.index = index;
         }
     }
 
@@ -191,11 +189,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private void endScope() {
         Map<String, Variable> scope = scopes.pop();
-
         for (Variable variable : scope.values()) {
             if (!variable.used) {
-                Lox.error(variable.name,
-                        "Local variable is never used.");
+                Lox.error(variable.name, "Local variable is never used.");
             }
         }
     }
@@ -208,8 +204,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             Lox.error(name, "Already a variable with this name in this scope.");
         }
 
-        Variable variable = new Variable(name);
-        scope.put(name.lexeme, variable);
+        int index = scope.size();
+        scope.put(name.lexeme, new Variable(name, index));
     }
 
     private void define(Token name) {
@@ -225,7 +221,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
                 Variable variable = scope.get(name.lexeme);
                 variable.used = true;
 
-                interpreter.resolve(expr, scopes.size() - 1 - i);
+                int depth = scopes.size() - 1 - i;
+                interpreter.resolve(expr, depth, variable.index);
                 return;
             }
         }
