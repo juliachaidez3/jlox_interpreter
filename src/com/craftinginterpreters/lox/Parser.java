@@ -53,7 +53,7 @@ class Parser {
 
         List<Stmt.Function> methods = new ArrayList<>();
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-            methods.add(function("method"));
+            methods.add(method());
         }
 
         consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
@@ -90,7 +90,42 @@ class Parser {
 
         List<Stmt> body = block();
 
-        return new Stmt.Function(name, parameters, body);
+        return new Stmt.Function(name, parameters, body, false);
+    }
+
+    private Stmt.Function method() {
+        Token name = consume(TokenType.IDENTIFIER,
+                "Expect method name.");
+
+        boolean isGetter = !check(TokenType.LEFT_PAREN);
+
+        List<Token> parameters = new ArrayList<>();
+        if (!isGetter) {
+            consume(TokenType.LEFT_PAREN,
+                    "Expect '(' after method name.");
+
+            if (!check(TokenType.RIGHT_PAREN)) {
+                do {
+                    if (parameters.size() >= 255) {
+                        error(peek(), "Can't have more than 255 parameters.");
+                    }
+
+                    parameters.add(
+                            consume(TokenType.IDENTIFIER,
+                                    "Expect parameter name."));
+                } while (match(TokenType.COMMA));
+            }
+
+            consume(TokenType.RIGHT_PAREN,
+                    "Expect ')' after parameters.");
+        }
+
+        consume(TokenType.LEFT_BRACE,
+                "Expect '{' before method body.");
+
+        List<Stmt> body = block();
+
+        return new Stmt.Function(name, parameters, body, isGetter);
     }
 
     private Stmt varDeclaration() {

@@ -7,13 +7,19 @@ class LoxFunction implements LoxCallable {
     private final Stmt.Function declaration;
     private final Environment closure;
     private final boolean isInitializer;
+    private final boolean isGetter;
 
     LoxFunction(Stmt.Function declaration, Environment closure,
                 boolean isInitializer) {
         this.isInitializer = isInitializer;
+        this.isGetter = declaration.isGetter;
 
         this.closure = closure;
         this.declaration = declaration;
+    }
+
+    boolean isGetter() {
+        return isGetter;
     }
 
     @Override
