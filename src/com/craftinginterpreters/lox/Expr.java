@@ -9,6 +9,7 @@ abstract class Expr {
     R visitCallExpr(Call expr);
     R visitGroupingExpr(Grouping expr);
     R visitGetExpr(Get expr);
+    R visitInnerExpr(Inner expr);
     R visitSetExpr(Set expr);
     R visitSuperExpr(Super expr);
     R visitThisExpr(This expr);
@@ -88,6 +89,18 @@ abstract class Expr {
 
     final Expr object;
     final Token name;
+  }
+  static class Inner extends Expr {
+    Inner(Token keyword) {
+      this.keyword = keyword;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitInnerExpr(this);
+    }
+
+    final Token keyword;
   }
   static class Set extends Expr {
     Set(Expr object, Token name, Expr value) {

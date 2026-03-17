@@ -184,6 +184,23 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitInnerExpr(Expr.Inner expr) {
+        if (currentClass == ClassType.NONE) {
+            Lox.error(expr.keyword,
+                    "Can't use 'inner' outside of a class.");
+            return null;
+        }
+
+        if (currentFunction != FunctionType.METHOD &&
+                currentFunction != FunctionType.INITIALIZER) {
+            Lox.error(expr.keyword,
+                    "Can't use 'inner' outside of a method.");
+        }
+
+        return null;
+    }
+
+    @Override
     public Void visitLiteralExpr(Expr.Literal expr) {
         return null;
     }

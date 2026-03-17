@@ -67,6 +67,11 @@ class AstPrinter implements Expr.Visitor<String> {
         return "(super " + expr.method.lexeme + ")";
     }
 
+    @Override
+    public String visitInnerExpr(Expr.Inner expr) {
+        return "inner";
+    }
+
     private String parenthesize(String name, Expr... exprs) {
         StringBuilder builder = new StringBuilder();
 

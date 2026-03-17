@@ -21,6 +21,7 @@ public class GenerateAst {
                 "Call     : Expr callee, Token paren, List<Expr> arguments",
                 "Grouping : Expr expression",
                 "Get      : Expr object, Token name",
+                "Inner    : Token keyword",
                 "Set      : Expr object, Token name, Expr value",
                 "Super    : Token keyword, Token method",
                 "This     : Token keyword",

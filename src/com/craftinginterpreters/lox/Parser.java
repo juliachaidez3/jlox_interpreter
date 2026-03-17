@@ -419,6 +419,7 @@ class Parser {
         }
 
         if (match(TokenType.THIS)) return new Expr.This(previous());
+        if (match(TokenType.INNER)) return new Expr.Inner(previous());
 
         if (match(TokenType.IDENTIFIER)) {
             return new Expr.Variable(previous());

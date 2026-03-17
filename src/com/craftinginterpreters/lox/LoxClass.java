@@ -27,6 +27,42 @@ class LoxClass implements LoxCallable {
         return null;
     }
 
+    LoxClass findTopDefiningClass(String name) {
+        LoxClass top = null;
+
+        if (superclass != null) {
+            top = superclass.findTopDefiningClass(name);
+        }
+
+        if (top != null) return top;
+        if (methods.containsKey(name)) return this;
+
+        return null;
+    }
+
+    LoxClass findNextDefiningClassBelow(LoxClass current, String name) {
+        if (superclass == null) return null;
+
+        if (superclass == current) {
+            if (methods.containsKey(name)) return this;
+            return null;
+        }
+
+        LoxClass found = superclass.findNextDefiningClassBelow(current, name);
+        if (found != null) return found;
+
+        if (methods.containsKey(name)) return this;
+        return null;
+    }
+
+    LoxFunction getMethodFromClass(LoxClass definingClass, String name) {
+        LoxFunction method = definingClass.methods.get(name);
+        if (method == null) return null;
+
+        return new LoxFunction(method.declaration, method.closure,
+                name.equals("init"), definingClass, name);
+    }
+
     @Override
     public Object call(Interpreter interpreter,
                        List<Object> arguments) {

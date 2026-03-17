@@ -10,6 +10,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     final Environment globals = new Environment();
     private Environment environment = globals;
     private final Map<Expr, Integer> locals = new HashMap<>();
+    LoxFunction currentMethod = null;
 
     Interpreter() {
         globals.define("clock", new LoxCallable() {
@@ -101,7 +102,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         Map<String, LoxFunction> methods = new HashMap<>();
         for (Stmt.Function method : stmt.methods) {
             LoxFunction function = new LoxFunction(method, environment,
-                    method.name.lexeme.equals("init"));
+                    method.name.lexeme.equals("init"), null, method.name.lexeme);
             methods.put(method.name.lexeme, function);
         }
 
@@ -144,9 +145,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
-
         LoxFunction function = new LoxFunction(stmt, environment,
-                false);
+                false, null, stmt.name.lexeme);
         environment.define(stmt.name.lexeme, function);
 
         return null;
@@ -377,6 +377,95 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitThisExpr(Expr.This expr) {
         return lookUpVariable(expr.keyword, expr);
+    }
+
+    @Override
+    public Object visitInnerExpr(Expr.Inner expr) {
+        if (currentMethod == null) {
+            return new LoxCallable() {
+                @Override
+                public int arity() {
+                    return 0;
+                }
+
+                @Override
+                public Object call(Interpreter interpreter, List<Object> arguments) {
+                    return null;
+                }
+
+                @Override
+                public String toString() {
+                    return "<inner noop>";
+                }
+            };
+        }
+
+        LoxClass owner = currentMethod.getOwner();
+        String methodName = currentMethod.getMethodName();
+
+        if (owner == null || methodName == null) {
+            return new LoxCallable() {
+                @Override
+                public int arity() {
+                    return 0;
+                }
+
+                @Override
+                public Object call(Interpreter interpreter, List<Object> arguments) {
+                    return null;
+                }
+
+                @Override
+                public String toString() {
+                    return "<inner noop>";
+                }
+            };
+        }
+
+        LoxInstance object = (LoxInstance)environment.getAt(1, "this");
+        LoxClass receiverClass = object.klass;
+
+        LoxClass nextClass = receiverClass.findNextDefiningClassBelow(owner, methodName);
+        if (nextClass == null) {
+            return new LoxCallable() {
+                @Override
+                public int arity() {
+                    return 0;
+                }
+
+                @Override
+                public Object call(Interpreter interpreter, List<Object> arguments) {
+                    return null;
+                }
+
+                @Override
+                public String toString() {
+                    return "<inner noop>";
+                }
+            };
+        }
+
+        LoxFunction method = receiverClass.getMethodFromClass(nextClass, methodName);
+        if (method == null) {
+            return new LoxCallable() {
+                @Override
+                public int arity() {
+                    return 0;
+                }
+
+                @Override
+                public Object call(Interpreter interpreter, List<Object> arguments) {
+                    return null;
+                }
+
+                @Override
+                public String toString() {
+                    return "<inner noop>";
+                }
+            };
+        }
+
+        return method.bind(object);
     }
 
     private boolean isTruthy(Object object) {

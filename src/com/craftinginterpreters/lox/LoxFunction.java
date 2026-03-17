@@ -4,16 +4,34 @@ import java.util.List;
 
 class LoxFunction implements LoxCallable {
 
-    private final Stmt.Function declaration;
-    private final Environment closure;
-    private final boolean isInitializer;
+    final Stmt.Function declaration;
+    final Environment closure;
+    final boolean isInitializer;
+    final LoxClass owner;
+    final String methodName;
 
     LoxFunction(Stmt.Function declaration, Environment closure,
-                boolean isInitializer) {
+                boolean isInitializer, LoxClass owner, String methodName) {
         this.isInitializer = isInitializer;
-
         this.closure = closure;
         this.declaration = declaration;
+        this.owner = owner;
+        this.methodName = methodName;
+    }
+
+    LoxClass getOwner() {
+        return owner;
+    }
+
+    String getMethodName() {
+        return methodName;
+    }
+
+    LoxFunction bind(LoxInstance instance) {
+        Environment environment = new Environment(closure);
+        environment.define("this", instance);
+        return new LoxFunction(declaration, environment,
+                isInitializer, owner, methodName);
     }
 
     @Override
@@ -32,11 +50,18 @@ class LoxFunction implements LoxCallable {
                     arguments.get(i));
         }
 
+        LoxFunction enclosingMethod = interpreter.currentMethod;
+        interpreter.currentMethod = this;
+
         try {
             interpreter.executeBlock(declaration.body, environment);
         } catch (Return returnValue) {
+            interpreter.currentMethod = enclosingMethod;
+            if (isInitializer) return closure.getAt(0, "this");
             return returnValue.value;
         }
+
+        interpreter.currentMethod = enclosingMethod;
 
         if (isInitializer) return closure.getAt(0, "this");
 
@@ -46,12 +71,5 @@ class LoxFunction implements LoxCallable {
     @Override
     public String toString() {
         return "<fn " + declaration.name.lexeme + ">";
-    }
-
-    LoxFunction bind(LoxInstance instance) {
-        Environment environment = new Environment(closure);
-        environment.define("this", instance);
-        return new LoxFunction(declaration, environment,
-                isInitializer);
     }
 }
