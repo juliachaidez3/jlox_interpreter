@@ -91,6 +91,16 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             }
         }
 
+        List<LoxClass> mixins = new ArrayList<>();
+        for (Expr.Variable mixinExpr : stmt.mixins) {
+            Object mixin = evaluate(mixinExpr);
+            if (!(mixin instanceof LoxClass)) {
+                throw new RuntimeError(mixinExpr.name,
+                        "Mixin must be a class.");
+            }
+            mixins.add((LoxClass)mixin);
+        }
+
         environment.define(stmt.name.lexeme, null);
 
         if (stmt.superclass != null) {
@@ -99,6 +109,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
 
         Map<String, LoxFunction> methods = new HashMap<>();
+
+        for (LoxClass mixin : mixins) {
+            methods.putAll(mixin.getMethods());
+        }
+
         for (Stmt.Function method : stmt.methods) {
             LoxFunction function = new LoxFunction(method, environment,
                     method.name.lexeme.equals("init"));

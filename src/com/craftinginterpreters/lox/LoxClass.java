@@ -27,6 +27,10 @@ class LoxClass implements LoxCallable {
         return null;
     }
 
+    Map<String, LoxFunction> getMethods() {
+        return methods;
+    }
+
     @Override
     public Object call(Interpreter interpreter,
                        List<Object> arguments) {

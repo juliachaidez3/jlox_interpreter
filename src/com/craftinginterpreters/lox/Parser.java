@@ -55,6 +55,14 @@ class Parser {
             superclass = new Expr.Variable(previous());
         }
 
+        List<Expr.Variable> mixins = new ArrayList<>();
+        if (match(TokenType.WITH)) {
+            do {
+                consume(TokenType.IDENTIFIER, "Expect mixin name.");
+                mixins.add(new Expr.Variable(previous()));
+            } while (match(TokenType.COMMA));
+        }
+
         consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
 
         List<Stmt.Function> methods = new ArrayList<>();
@@ -64,7 +72,7 @@ class Parser {
 
         consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, superclass, methods);
+        return new Stmt.Class(name, superclass, mixins, methods);
     }
 
     private Stmt.Function function(String kind) {
